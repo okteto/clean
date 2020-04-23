@@ -13,6 +13,7 @@ var CommitString string
 var except = map[string]struct{}{
 	"remote":    {},
 	"syncthing": {},
+	"clean":     {},
 }
 
 func shouldKill(p ps.Process) bool {
@@ -39,7 +40,7 @@ func shouldKill(p ps.Process) bool {
 }
 
 func main() {
-	log.Infof("clean service %s started", CommitString)
+	log.Infof("clean service started sha=%s pid=%d ppid=%d", CommitString, os.Getpid(), os.Getppid())
 	processes, err := ps.Processes()
 	if err != nil {
 		log.Errorf("fail to list processes: %s", processes)

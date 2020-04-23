@@ -6,7 +6,7 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 COPY . . 
-RUN CGO=0 GOOS=linux go build -o remote -ldflags "-X main.CommitString=${COMMIT}" -tags "osusergo netgo static_build" .
+RUN CGO=0 GOOS=linux go build -o clean -ldflags "-X main.CommitString=${COMMIT}" -tags "osusergo netgo static_build" .
 
 FROM busybox
 
