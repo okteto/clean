@@ -1,6 +1,6 @@
 COMMIT_SHA := $(shell git rev-parse --short HEAD)
-VERSION := '0.1.0'
+VERSION := '0.1.1'
 
-.PHONY: build
-build:
+.PHONY: push
+push:
 	okteto build -t okteto/clean:${VERSION} --build-arg COMMIT=${COMMIT_SHA} .
