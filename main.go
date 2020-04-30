@@ -22,7 +22,7 @@ func shouldKill(p ps.Process) bool {
 	}
 
 	// don't kill the root process of the container
-	if p.PPid() == 0 {
+	if p.Pid() == 1 {
 		return false
 	}
 
