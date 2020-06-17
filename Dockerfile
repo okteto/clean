@@ -1,12 +1,12 @@
-FROM golang:1.14 as builder
-ARG COMMIT 
+FROM golang:1.14-buster as builder
 WORKDIR /app
 
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 COPY . . 
-RUN CGO=0 GOOS=linux go build -o clean -ldflags "-X main.CommitString=${COMMIT}" -tags "osusergo netgo static_build" .
+ARG COMMIT_SHA
+RUN CGO=0 go build -o clean -ldflags "-X main.CommitString=${COMMIT_SHA}" -tags "osusergo netgo static_build" .
 
 FROM busybox
 
