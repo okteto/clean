@@ -11,9 +11,9 @@ import (
 var CommitString string
 
 var except = map[string]struct{}{
-	"remote":    {},
-	"syncthing": {},
-	"clean":     {},
+	"okteto-remote": {},
+	"syncthing":     {},
+	"clean":         {},
 }
 
 func shouldKill(p ps.Process) bool {
