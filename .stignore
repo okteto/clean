@@ -13,3 +13,5 @@
 
 # dlv binary
 __debug_bin
+
+clean

@@ -13,30 +13,54 @@ var CommitString string
 var except = map[string]struct{}{
 	"okteto-remote": {},
 	"syncthing":     {},
-	"clean":         {},
+	"screen":        {},
+	"tmux: server":  {},
 }
 
 func shouldKill(p ps.Process) bool {
-	if _, ok := except[p.Executable()]; ok {
-		return false
-	}
-
-	// don't kill the root process of the container
 	if p.Pid() == 1 {
+		log.Info("not killing root process of the container")
 		return false
 	}
 
-	// don't kill your parent process
 	if p.Pid() == os.Getppid() {
+		log.Info("not killing parent process")
 		return false
 	}
 
-	// don't kill yourself
 	if p.Pid() == os.Getpid() {
+		log.Info("not killing yourself")
+		return false
+	}
+
+	if isChildrenOfExcept(p) {
 		return false
 	}
 
 	return true
+}
+
+func isChildrenOfExcept(p ps.Process) bool {
+	if p.Pid() == 1 {
+		return false
+	}
+
+	if _, ok := except[p.Executable()]; ok {
+		log.Infof("not killing, children of %s", p.Executable())
+		return true
+	}
+
+	parent, err := ps.FindProcess(p.PPid())
+	if err != nil {
+		log.Errorf("fail to find process %d : %s", p.PPid(), err)
+		return false
+	}
+
+	if parent == nil {
+		return false
+	}
+
+	return isChildrenOfExcept(parent)
 }
 
 func main() {
@@ -48,6 +72,7 @@ func main() {
 	}
 
 	for _, p := range processes {
+		log.Infof("checking process %s", p.Executable())
 
 		if !shouldKill(p) {
 			continue
