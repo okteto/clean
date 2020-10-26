@@ -10,11 +10,14 @@ import (
 // CommitString is the commit used to build the server
 var CommitString string
 
-var except = map[string]struct{}{
+var exceptByParent = map[string]struct{}{
+	"screen":       {},
+	"tmux: server": {},
+}
+
+var exceptByName = map[string]struct{}{
 	"okteto-remote": {},
 	"syncthing":     {},
-	"screen":        {},
-	"tmux: server":  {},
 }
 
 func shouldKill(p ps.Process) bool {
@@ -33,19 +36,24 @@ func shouldKill(p ps.Process) bool {
 		return false
 	}
 
-	if isChildrenOfExcept(p) {
+	if _, ok := exceptByName[p.Executable()]; ok {
+		log.Infof("not killing, excluded by name %s", p.Executable())
+		return false
+	}
+
+	if isChildrenOfExceptByParent(p) {
 		return false
 	}
 
 	return true
 }
 
-func isChildrenOfExcept(p ps.Process) bool {
+func isChildrenOfExceptByParent(p ps.Process) bool {
 	if p.Pid() == 1 {
 		return false
 	}
 
-	if _, ok := except[p.Executable()]; ok {
+	if _, ok := exceptByParent[p.Executable()]; ok {
 		log.Infof("not killing, children of %s", p.Executable())
 		return true
 	}
@@ -60,7 +68,7 @@ func isChildrenOfExcept(p ps.Process) bool {
 		return false
 	}
 
-	return isChildrenOfExcept(parent)
+	return isChildrenOfExceptByParent(parent)
 }
 
 func main() {
