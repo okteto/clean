@@ -13,6 +13,7 @@ var CommitString string
 var exceptByParent = map[string]struct{}{
 	"screen":       {},
 	"tmux: server": {},
+	"tmux":         {},
 }
 
 var exceptByName = map[string]struct{}{
