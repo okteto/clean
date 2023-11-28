@@ -1,0 +1,44 @@
+name: Build
+on: 
+  pull_request:
+    branches: master
+  push:
+    branches:
+      - master
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Okteto Context
+      uses: okteto/context@latest
+      with:
+        url: ${{ secrets.OKTETO_PRODUCT_URL }}
+        token: ${{ secrets.OKTETO_PRODUCT_TOKEN }}
+
+    - name: Login to DockerHub
+      if: ${{ github.event_name == 'release' }}
+      uses: azure/docker-login@v1
+      with:
+        username: '${{ secrets.DOCKER_USER }}'
+        password: '${{ secrets.DOCKER_PASS }}'
+
+    - id: tag
+      name: Image Tag
+      if: ${{ github.event_name == 'release' }}
+      run: echo ::set-output name=TAG::okteto/clean:${GITHUB_REF#refs/tags/}
+
+    - name: Okteto Build
+      uses: okteto/build@latest
+      with:
+        file: Dockerfile
+        buildargs: "COMMIT_SHA=${{ github.sha }}"
+        platform: linux/amd64,linux/arm64
+        tag: ${{ steps.tag.outputs.TAG }}
