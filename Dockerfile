@@ -1,4 +1,4 @@
-FROM golang:1.22-bookworm as builder
+FROM golang:1.22.9-bookworm as builder
 WORKDIR /app
 
 COPY go.mod .
@@ -8,7 +8,7 @@ COPY . .
 ARG COMMIT_SHA
 RUN CGO=0 go build -o clean -ldflags "-X main.CommitString=${COMMIT_SHA}" -tags "osusergo netgo static_build" .
 
-FROM busybox
+FROM busybox:1.37.0
 
 COPY --from=builder /app/clean /usr/local/bin/clean
 RUN chmod +x /usr/local/bin/clean
