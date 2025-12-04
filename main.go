@@ -2,8 +2,9 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 
-	ps "github.com/mitchellh/go-ps"
+	"github.com/shirou/gopsutil/v3/process"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,29 +18,42 @@ var exceptByParent = map[string]struct{}{
 }
 
 var exceptByName = map[string]struct{}{
-	"okteto-remote": {},
-	"syncthing":     {},
+	"okteto-remote":     {},
+	"syncthing":         {},
+	"okteto-supervisor": {},
+	"supervisor":        {},
 }
 
-func shouldKill(p ps.Process) bool {
-	if p.Pid() == 1 {
+func shouldKill(p *process.Process) bool {
+	pid := int32(p.Pid)
+	if pid == 1 {
+		// PID 1 is always protected. With shareProcessNamespace: true, this is /pause
+		// (Kubernetes infrastructure), not the container root. Container root processes
+		// (supervisor) are protected via exceptByName instead.
 		log.Info("not killing root process of the container")
 		return false
 	}
 
-	if p.Pid() == os.Getppid() {
+	if pid == int32(os.Getppid()) {
 		log.Info("not killing parent process")
 		return false
 	}
 
-	if p.Pid() == os.Getpid() {
+	if pid == int32(os.Getpid()) {
 		log.Info("not killing yourself")
 		return false
 	}
 
-	if _, ok := exceptByName[p.Executable()]; ok {
-		log.Infof("not killing, excluded by name %s", p.Executable())
-		return false
+	exe, err := p.Exe()
+	if err != nil {
+		log.Warnf("failed to get executable name for PID %d: %s", pid, err)
+		// Continue processing even if we can't get the executable name
+	} else {
+		exeName := filepath.Base(exe)
+		if _, ok := exceptByName[exeName]; ok {
+			log.Infof("not killing, excluded by name %s", exeName)
+			return false
+		}
 	}
 
 	if isChildrenOfExceptByParent(p) {
@@ -49,19 +63,32 @@ func shouldKill(p ps.Process) bool {
 	return true
 }
 
-func isChildrenOfExceptByParent(p ps.Process) bool {
-	if p.Pid() == 1 {
+func isChildrenOfExceptByParent(p *process.Process) bool {
+	pid := int32(p.Pid)
+	if pid == 1 {
 		return false
 	}
 
-	if _, ok := exceptByParent[p.Executable()]; ok {
-		log.Infof("not killing, children of %s", p.Executable())
-		return true
+	exe, err := p.Exe()
+	if err != nil {
+		log.Warnf("failed to get executable name for PID %d: %s", pid, err)
+	} else {
+		exeName := filepath.Base(exe)
+		if _, ok := exceptByParent[exeName]; ok {
+			log.Infof("not killing, children of %s", exeName)
+			return true
+		}
 	}
 
-	parent, err := ps.FindProcess(p.PPid())
+	ppid, err := p.Ppid()
 	if err != nil {
-		log.Errorf("fail to find process %d : %s", p.PPid(), err)
+		log.Errorf("fail to get parent PID for process %d : %s", pid, err)
+		return false
+	}
+
+	parent, err := process.NewProcess(ppid)
+	if err != nil {
+		log.Errorf("fail to find process %d : %s", ppid, err)
 		return false
 	}
 
@@ -74,27 +101,35 @@ func isChildrenOfExceptByParent(p ps.Process) bool {
 
 func main() {
 	log.Infof("clean service started sha=%s pid=%d ppid=%d", CommitString, os.Getpid(), os.Getppid())
-	processes, err := ps.Processes()
+	processes, err := process.Processes()
 	if err != nil {
-		log.Errorf("fail to list processes: %s", processes)
+		log.Errorf("fail to list processes: %s", err)
 		os.Exit(1)
 	}
 
 	for _, p := range processes {
-		log.Infof("checking process %s", p.Executable())
+		exe, err := p.Exe()
+		if err != nil {
+			log.Warnf("failed to get executable name for PID %d: %s", p.Pid, err)
+			exe = "unknown"
+		} else {
+			exe = filepath.Base(exe)
+		}
+		log.Infof("checking process %s", exe)
 
 		if !shouldKill(p) {
 			continue
 		}
+		log.Infof("killing process %s", exe)
 
-		pr, err := os.FindProcess(p.Pid())
+		pr, err := os.FindProcess(int(p.Pid))
 		if err != nil {
-			log.Errorf("fail to find process %d : %s", p.Pid(), err)
+			log.Errorf("fail to find process %d : %s", p.Pid, err)
 			continue
 		}
 
 		if err := pr.Kill(); err != nil {
-			log.Errorf("fail to kill process %d : %s", p.Pid(), err)
+			log.Errorf("fail to kill process %d : %s", p.Pid, err)
 		}
 	}
 
