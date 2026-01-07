@@ -1,15 +1,14 @@
 module github.com/okteto/clean
 
-go 1.24
+go 1.24.11
 
 require (
 	github.com/shirou/gopsutil/v3 v3.24.5
-	github.com/sirupsen/logrus v1.5.0
+	github.com/sirupsen/logrus v1.9.3
 )
 
 require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
