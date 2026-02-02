@@ -1,6 +1,6 @@
 module github.com/okteto/clean
 
-go 1.24.11
+go 1.24.12
 
 require (
 	github.com/shirou/gopsutil/v3 v3.24.5
